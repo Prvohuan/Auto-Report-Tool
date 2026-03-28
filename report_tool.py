@@ -41,7 +41,6 @@ def process_text():
                 match = re.search(pattern, block_text, flags)
                 return match.group(1).strip() if match else ''
 
-            # 分离人员与机械
             pm_text = extract_field(r'施工人员:(.*?)(?=\n|$)', block)
             num_match = re.search(r'(\d+)\s*人?', pm_text)
             personnel_num = num_match.group(1) if num_match else ''
@@ -52,7 +51,6 @@ def process_text():
                 machine_text = pm_text
             machine_text = machine_text.strip(' 、，,')
             
-            # 智能拆分施工部位与内容
             content_raw = extract_field(r'施工内容:(.*?)(?=\n(?:施工人员|队伍)|$)', block, re.DOTALL)
             sub_tasks = re.split(r'[，,\n]', content_raw)
             buweis, neirongs = [], []
@@ -64,9 +62,8 @@ def process_text():
                 if bw: buweis.append(bw)
                 if nr: neirongs.append(nr)
             
-            # 【终极防弹设计】：在这里直接把所有列死死固定，绝不会再报 KeyError
             record = {
-                '序号': 0,  # 临时占位，下面会统一刷新
+                '序号': 0, 
                 '桩号': extract_field(r'桩号:(.*?)(?=\n|$)', block),
                 '部位': '；'.join(buweis),
                 '施工内容': '；'.join(neirongs),
@@ -82,11 +79,9 @@ def process_text():
             messagebox.showwarning("提示", "未能识别到有效数据，请确保格式正确。")
             return
             
-        # 生成表格并刷新正确的序号
         df = pd.DataFrame(records)
         df['序号'] = range(1, len(df) + 1)
         
-        # 导出为 Excel 到用户桌面
         date_str = datetime.datetime.now().strftime("%Y-%m-%d")
         file_name = f"{date_str}二工区台账.xlsx"
         desktop_path = os.path.join(os.path.expanduser("~"), 'Desktop')
@@ -103,16 +98,20 @@ def process_text():
 # ================= 可视化界面设置 =================
 root = tk.Tk()
 root.title("台账自动化生成工具 (智能解析版)")
-root.geometry("600x480")
+
+# 【修复点1】把窗口高度拉大，并允许鼠标拖拽边缘放大缩小窗口
+root.geometry("650x600")
+root.minsize(500, 450) # 设置一个最小尺寸，防止被缩得太小
 root.configure(bg="#f0f0f0")
 
 label = tk.Label(root, text="请将微信群内的汇报内容（可连带多条）粘贴在下方：", font=("微软雅黑", 11), bg="#f0f0f0")
 label.pack(pady=(20, 10))
 
-text_box = tk.Text(root, width=70, height=20, font=("微软雅黑", 10))
-text_box.pack(pady=5)
+# 【修复点2】把输入框的行数（高度）从 20 改成了 12，给底下的按钮让路
+text_box = tk.Text(root, width=70, height=12, font=("微软雅黑", 10))
+text_box.pack(pady=5, padx=20, fill=tk.BOTH, expand=True) # 允许输入框随着窗口放大而自动伸缩
 
 btn = tk.Button(root, text="一键生成当日 Excel", command=process_text, font=("微软雅黑", 12, "bold"), bg="#2c3e50", fg="white", width=22)
-btn.pack(pady=15)
+btn.pack(pady=20)
 
 root.mainloop()
